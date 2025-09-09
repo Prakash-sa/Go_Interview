@@ -18,3 +18,13 @@ func main(){
 		// handle timeout
 	}
 }
+
+
+// Context-aware I/O (cancellation propagation)
+
+req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+resp, err := http.DefaultClient.Do(req)
+if err != nil {
+    return err // respects ctx deadline/cancel
+}
+defer resp.Body.Close()

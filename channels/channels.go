@@ -61,4 +61,30 @@ func multiplexing(){
 	}
 }
 
+// Closing channels & signaling
+// Broadcast “done” by closing a channel
+done := make(chan struct{})
+
+go func() {
+    // ... when finished:
+    close(done) // all receivers unblock
+}()
+
+select {
+case <-done:
+    // observed close
+}
+
+
+// Non-blocking sends/receives with select default
+// Notes: Use sparingly; default makes the operation non-blocking.
+// Good for loss-tolerant metrics or best-effort signals. 
+
+select {
+case ch <- v:
+    // sent
+default:
+    // channel full: drop, log, or apply backpressure
+}
+
 
