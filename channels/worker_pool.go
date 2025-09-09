@@ -2,11 +2,32 @@ package channels
 
 import "context"
 
+// Fan-in (merge many into one)
+func fanIn[T any](chs ...<-chan T) <-chan T {
+    out := make(chan T)
+    var wg sync.WaitGroup
+    wg.Add(len(chs))
+    for _, ch := range chs {
+        ch := ch
+        go func() {
+            defer wg.Done()
+            for v := range ch { out <- v }
+        }()
+    }
+    go func() { wg.Wait(); close(out) }()
+    return out
+}
+
+
 // Fan-out / worker pool
 // Pattern: N workers reading from one jobs channel, sending results
 
 // Notes: This is the canonical worker-pool (fan-out) with context for cancellation and a single results stream (fan-in). 
 // Ensure you consume all results or close result channel when done.
+
+
+// Notes: One producer → N workers (fan-out) → one results stream (fan-in). 
+// Ensure you fully drain output or close appropriately to avoid leaks.
 
 type Job struct{ ID int }
 type Result struct {
