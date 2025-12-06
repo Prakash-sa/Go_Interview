@@ -1,40 +1,40 @@
 package pipeline
 
-import "fmt"
+// Simple two-stage pipeline: source -> square -> sink.
+// Each stage owns its output channel and closes it when done to avoid leaks.
 
-func sliceToChannel(nums []int)<-chan int{
-	out:=make(chan int)
-
-	go func(){
-		for _,n:=range nums{
-			out<-n
+// SliceToChannel fan-outs a slice into a channel.
+func SliceToChannel(nums []int) <-chan int {
+	out := make(chan int)
+	go func() {
+		defer close(out)
+		for _, n := range nums {
+			out <- n
 		}
-		close(out)
 	}()
 	return out
 }
 
-func sq(in <-chan int)<-chan int{
-	out :=make(chan int)
-	go func(){
-		for n:=range in{
-			out<-n*n
+// Square squares incoming numbers and forwards results.
+func Square(in <-chan int) <-chan int {
+	out := make(chan int)
+	go func() {
+		defer close(out)
+		for n := range in {
+			out <- n * n
 		}
-		close(out)
 	}()
 	return out
 }
 
-func main(){
-	nums:=[]int{2,3,4,5}
+// Run composes the pipeline and collects results for convenience in examples/tests.
+func Run(nums []int) []int {
+	src := SliceToChannel(nums)
+	sq := Square(src)
 
-	// stage 1
-	dataChannel:=sliceToChannel(nums)
-
-	// stage 2
-	finalChannel:=sq(dataChannel)
-
-	for n:=range finalChannel{
-		fmt.Println(n)
+	var res []int
+	for v := range sq {
+		res = append(res, v)
 	}
+	return res
 }

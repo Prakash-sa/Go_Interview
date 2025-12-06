@@ -45,6 +45,20 @@
 
 - **Don’t fight the model** : communicate by channels; share memory via synchronization when that’s simpler. Rob Pike’s talks & Go blog are gold.
 
+## What to run
+
+- `go run primitive.go` – tiniest goroutine demo.
+- `go test ./...` – builds everything (no external services needed).
+- Explore examples:
+  - `pipeline` package – idiomatic pipeline + context cancellation.
+  - `channels` package – waitgroups, worker pool, semaphore limits, backpressure.
+  - `timer` and `context` packages – rate limiting, timers, ctx usage.
+  - `Interfaces` and `polymorphism` – interface examples (composition over inheritance).
+
+## Interview prep
+
+- See `INTERVIEW_QA.md` for fast Q&A/tradeoff prompts across channels, mutex vs channels, buffering, waitgroups, cancellation, and backpressure patterns.
+
 # Links
 
 - [Concurrency Patters](https://github.com/lotusirous/go-concurrency-patterns)

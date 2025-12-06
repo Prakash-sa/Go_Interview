@@ -1,90 +1,83 @@
 package channels
 
 import (
-	"fmt"
+	"strconv"
 	"time"
 )
 
-func main(){
-	myChannels:=make(chan string)
-	go func(){
-		myChannels<-"data"
-	}()
-
-	msg:=<-myChannels
-	fmt.Println(msg)
-}
-
-// Fire-and-forgot goroutine
-func fire_and_forgot_gorountine(){ 
+// BasicSendReceive shows the synchronization of an unbuffered channel.
+func BasicSendReceive() string {
+	ch := make(chan string)
 	go func() {
-		// do work concurrently
+		ch <- "data"
 	}()
+	return <-ch
 }
 
-
-// Unbuffered and buffered channel
-// Notes: Unbuffered channels synchronize sender/receiver
-// buffered channels add queueing capacity (use to express backpressure). 
-func channels(){
-	// unbuffered: send blocks until the receiver is ready(synchronizes)
-	ch:=make(chan int)
-
-	// buffered: send blocks only when the buffer is full (backpressure)(asynchonous)
-	buf:=make(chan int,8)
-
-	go func(){
-		ch <- 42 // blocks until main receives
-    	buf <- 7 // may not block if capacity available
-	}()
-
-	x := <-ch
-	y := <-buf
-	_ = x
-	_ = y
+// FireAndForget spins a goroutine without waiting for it.
+func FireAndForget(fn func()) {
+	go fn()
 }
 
+// UnbufferedAndBuffered demonstrates blocking semantics for both channel types.
+func UnbufferedAndBuffered() (unbuffered, buffered int) {
+	ch := make(chan int)
+	buf := make(chan int, 2)
 
-// select for multiplexing
-// select picks a ready case at random if multiple are ready; 
-// use time.After for per-operation timeouts.
-func multiplexing(){
-	ch1:=make(chan int)
-	ch2:=make(chan int)
-	select{
-	case v:=<-ch1:
-		_=v // handle channel 1
-	case w:=<-ch2:
-		_=w // handle channel 2
-	case <-time.After(200*time.Millisecond):
-		// handle timeout fallback
+	go func() {
+		ch <- 42 // blocks until receiver is ready
+		buf <- 7 // buffered send if capacity available
+		buf <- 9 // still room because cap=2
+		close(buf)
+	}()
+
+	unbuffered = <-ch
+	buffered = <-buf
+	return unbuffered, buffered
+}
+
+// Multiplexing uses select to handle whichever channel is ready first.
+func Multiplexing() string {
+	ch1 := make(chan int)
+	ch2 := make(chan int)
+
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		ch2 <- 2
+	}()
+
+	select {
+	case v := <-ch1:
+		return "ch1:" + strconv.Itoa(v)
+	case w := <-ch2:
+		return "ch2:" + strconv.Itoa(w)
+	case <-time.After(200 * time.Millisecond):
+		return "timeout"
 	}
 }
 
-// Closing channels & signaling
-// Broadcast “done” by closing a channel
-done := make(chan struct{})
+// ClosingSignal broadcasts completion by closing a channel.
+func ClosingSignal() bool {
+	done := make(chan struct{})
+	go func() {
+		time.Sleep(10 * time.Millisecond)
+		close(done)
+	}()
 
-go func() {
-    // ... when finished:
-    close(done) // all receivers unblock
-}()
-
-select {
-case <-done:
-    // observed close
+	select {
+	case <-done:
+		return true
+	case <-time.After(200 * time.Millisecond):
+		return false
+	}
 }
 
-
-// Non-blocking sends/receives with select default
-// Notes: Use sparingly; default makes the operation non-blocking.
-// Good for loss-tolerant metrics or best-effort signals. 
-
-select {
-case ch <- v:
-    // sent
-default:
-    // channel full: drop, log, or apply backpressure
+// NonBlockingSend attempts a best-effort send using select default.
+func NonBlockingSend(ch chan<- int, v int) bool {
+	select {
+	case ch <- v:
+		return true
+	default:
+		return false
+	}
 }
-
-

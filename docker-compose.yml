@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  app:
+    image: golang:1.22
+    working_dir: /workspace
+    environment:
+      - GOTOOLCHAIN=auto
+      - CGO_ENABLED=0
+    volumes:
+      - .:/workspace
+    command: ["go", "run", "primitive.go"]

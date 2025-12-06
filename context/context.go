@@ -1,30 +1,45 @@
-package context
+package contextdemo
 
 import (
 	"context"
+	"net/http"
 	"time"
 )
 
-// cancellation & timeout with context
-// Prefer context over ad-hoc “done” channels for deadlines and propagation; always defer cancel() in the creator.
+// WorkEmulator returns a channel closed when the fake work finishes or ctx cancels.
+func WorkEmulator(ctx context.Context, d time.Duration) <-chan struct{} {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		select {
+		case <-time.After(d):
+		case <-ctx.Done():
+		}
+	}()
+	return done
+}
 
-func main(){
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+// WithTimeout demonstrates cancellation handling using context.
+func WithTimeout() bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
 	select {
-	case <-doWork(ctx):   // returns a channel closed on completion
-	case <-ctx.Done():    // deadline exceeded or canceled
-		// handle timeout
+	case <-WorkEmulator(ctx, 10*time.Millisecond):
+		return true // completed before timeout
+	case <-ctx.Done():
+		return false // deadline exceeded
 	}
 }
 
-
-// Context-aware I/O (cancellation propagation)
-
-req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-resp, err := http.DefaultClient.Do(req)
-if err != nil {
-    return err // respects ctx deadline/cancel
+// HTTPWithContext shows how HTTP requests inherit deadlines and cancellations.
+func HTTPWithContext(ctx context.Context, client *http.Client, url string) (*http.Response, error) {
+	if client == nil {
+		client = http.DefaultClient
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	return client.Do(req)
 }
-defer resp.Body.Close()
